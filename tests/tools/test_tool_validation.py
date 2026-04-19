@@ -3,6 +3,8 @@ import subprocess
 import sys
 from typing import Any
 
+import pytest
+
 from nanobot.agent.tools import (
     ArraySchema,
     IntegerSchema,
@@ -570,10 +572,13 @@ async def test_exec_head_tail_truncation(tmp_path) -> None:
     assert "Exit code:" in result
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="No command like sleep in Windows",
+)
 async def test_exec_timeout_parameter() -> None:
     """LLM-supplied timeout should override the constructor default."""
     tool = ExecTool(timeout=60)
-    # A very short timeout should cause the command to be killed
     result = await tool.execute(command="sleep 10", timeout=1)
     assert "timed out" in result
     assert "1 seconds" in result
