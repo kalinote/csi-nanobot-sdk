@@ -107,15 +107,15 @@ nanobot provider login openai-codex
 }
 ```
 
-**3. Chat:**
+**3. API 服务:**
 ```bash
-nanobot agent -m "Hello!"
+nanobot serve
 
-# Target a specific workspace/config locally
-nanobot agent -c ~/.nanobot-telegram/config.json -m "Hello!"
+# 指定配置文件
+nanobot serve -c ~/.nanobot-telegram/config.json
 
-# One-off workspace override on top of that config
-nanobot agent -c ~/.nanobot-telegram/config.json -w /tmp/nanobot-telegram-test -m "Hello!"
+# 在指定配置基础上临时覆盖 workspace
+nanobot serve -c ~/.nanobot-telegram/config.json -w /tmp/nanobot-telegram-test
 ```
 
 > Docker users: use `docker run -it` for interactive OAuth login.
@@ -145,15 +145,13 @@ nanobot provider login github-copilot
 }
 ```
 
-**3. Chat:**
+**3. API 服务:**
 ```bash
-nanobot agent -m "Hello!"
+nanobot serve
 
-# Target a specific workspace/config locally
-nanobot agent -c ~/.nanobot-telegram/config.json -m "Hello!"
+nanobot serve -c ~/.nanobot-telegram/config.json
 
-# One-off workspace override on top of that config
-nanobot agent -c ~/.nanobot-telegram/config.json -w /tmp/nanobot-telegram-test -m "Hello!"
+nanobot serve -c ~/.nanobot-telegram/config.json -w /tmp/nanobot-telegram-test
 ```
 
 > Docker users: use `docker run -it` for interactive OAuth login.

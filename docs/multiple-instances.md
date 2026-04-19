@@ -36,17 +36,17 @@ nanobot gateway --config ~/.nanobot-feishu/config.json --port 18792
 
 When using `--config`, nanobot derives its runtime data directory from the config file location. The workspace still comes from `agents.defaults.workspace` unless you override it with `--workspace`.
 
-To open a CLI session against one of these instances locally:
+To run the HTTP API against one of these instances locally:
 
 ```bash
-nanobot agent -c ~/.nanobot-telegram/config.json -m "Hello from Telegram instance"
-nanobot agent -c ~/.nanobot-discord/config.json -m "Hello from Discord instance"
+nanobot serve -c ~/.nanobot-telegram/config.json
+nanobot serve -c ~/.nanobot-discord/config.json
 
 # Optional one-off workspace override
-nanobot agent -c ~/.nanobot-telegram/config.json -w /tmp/nanobot-telegram-test
+nanobot serve -c ~/.nanobot-telegram/config.json -w /tmp/nanobot-telegram-test
 ```
 
-> `nanobot agent` starts a local CLI agent using the selected workspace/config. It does not attach to or proxy through an already running `nanobot gateway` process.
+> `nanobot serve` starts the OpenAI-compatible API using the selected workspace/config. It does not attach to or proxy through an already running `nanobot gateway` process.
 
 | Component | Resolved From | Example |
 |-----------|---------------|---------|

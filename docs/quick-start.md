@@ -95,10 +95,10 @@ Configure these **two parts** in your config (other options have defaults).
 }
 ```
 
-**3. Chat**
+**3. API 服务**
 
 ```bash
-nanobot agent
+nanobot serve
 ```
 
 That's it! You have a working AI agent in 2 minutes.

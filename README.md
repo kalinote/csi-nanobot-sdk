@@ -174,10 +174,10 @@ Configure these **two parts** in your config (other options have defaults). Add 
 }
 ```
 
-**3. Chat**
+**3. API 服务**
 
 ```bash
-nanobot agent
+nanobot serve
 ```
 
 

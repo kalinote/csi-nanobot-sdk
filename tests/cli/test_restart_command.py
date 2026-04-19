@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import os
 import time
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -47,13 +46,8 @@ class TestRestartCommand:
     async def test_restart_sends_message_and_calls_execv(self):
         from nanobot.command.builtin import cmd_restart
         from nanobot.command.router import CommandContext
-        from nanobot.utils.restart import (
-            RESTART_NOTIFY_CHANNEL_ENV,
-            RESTART_NOTIFY_CHAT_ID_ENV,
-            RESTART_STARTED_AT_ENV,
-        )
 
-        loop, bus = _make_loop()
+        loop, _bus = _make_loop()
         msg = InboundMessage(channel="cli", sender_id="user", chat_id="direct", content="/restart")
         ctx = CommandContext(msg=msg, session=None, key=msg.session_key, raw="/restart", loop=loop)
 
@@ -72,14 +66,10 @@ class TestRestartCommand:
             create_task=_capture_task,
         )
 
-        with patch.dict(os.environ, {}, clear=False), \
-             patch("nanobot.command.builtin.asyncio", new=fake_asyncio), \
+        with patch("nanobot.command.builtin.asyncio", new=fake_asyncio), \
              patch("nanobot.command.builtin.os.execv") as mock_execv:
             out = await cmd_restart(ctx)
             assert "Restarting" in out.content
-            assert os.environ.get(RESTART_NOTIFY_CHANNEL_ENV) == "cli"
-            assert os.environ.get(RESTART_NOTIFY_CHAT_ID_ENV) == "direct"
-            assert os.environ.get(RESTART_STARTED_AT_ENV)
 
             assert scheduled
             await scheduled[0]

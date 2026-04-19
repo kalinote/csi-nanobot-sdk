@@ -36,7 +36,7 @@ vim ~/.nanobot/config.json
 docker run -v ~/.nanobot:/home/nanobot/.nanobot -p 18790:18790 nanobot gateway
 
 # Or run a single command
-docker run -v ~/.nanobot:/home/nanobot/.nanobot --rm nanobot agent -m "Hello!"
+docker run -v ~/.nanobot:/home/nanobot/.nanobot -p 8900:8900 nanobot serve
 docker run -v ~/.nanobot:/home/nanobot/.nanobot --rm nanobot status
 ```
 
