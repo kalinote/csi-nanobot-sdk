@@ -370,8 +370,8 @@ class TestSyncWorkspaceTemplates:
             assert not Path(path).is_absolute()
 
 
-class TestProviderChannelInfo:
-    """Tests for provider and channel info retrieval."""
+class TestProviderInfo:
+    """Tests for provider info retrieval."""
 
     def test_get_provider_names_returns_dict(self):
         from nanobot.cli.onboard import _get_provider_names
@@ -383,14 +383,6 @@ class TestProviderChannelInfo:
         assert "openai" in names or "anthropic" in names
         assert "openai_codex" not in names
         assert "github_copilot" not in names
-
-    def test_get_channel_names_returns_dict(self):
-        from nanobot.cli.onboard import _get_channel_names
-
-        names = _get_channel_names()
-        assert isinstance(names, dict)
-        # Should include at least some channels
-        assert len(names) >= 0
 
     def test_get_provider_info_returns_valid_structure(self):
         from nanobot.cli.onboard import _get_provider_info
@@ -638,17 +630,15 @@ class TestValidateFieldConstraint:
         assert _validate_field_constraint("abc", field_info) is None
         assert _validate_field_constraint("abcdef", field_info) is not None
 
-    def test_real_send_max_retries_field(self):
-        """Validate against the actual ChannelsConfig.send_max_retries field."""
-        from nanobot.config.schema import ChannelsConfig
+    def test_real_dream_max_iterations_field(self):
+        """Validate against DreamConfig.max_iterations constraints."""
+        from nanobot.config.schema import DreamConfig
         from nanobot.cli.onboard import _validate_field_constraint
 
-        field_info = ChannelsConfig.model_fields["send_max_retries"]
+        field_info = DreamConfig.model_fields["max_iterations"]
         assert _validate_field_constraint(3, field_info) is None
-        assert _validate_field_constraint(0, field_info) is None
-        assert _validate_field_constraint(10, field_info) is None
-        assert _validate_field_constraint(-1, field_info) is not None
-        assert _validate_field_constraint(11, field_info) is not None
+        assert _validate_field_constraint(1, field_info) is None
+        assert _validate_field_constraint(0, field_info) is not None
 
 
 class TestGetConstraintHint:
@@ -700,14 +690,13 @@ class TestGetConstraintHint:
         assert "100" in hint
         assert "<=" in hint
 
-    def test_real_send_max_retries_hint(self):
-        """Actual ChannelsConfig.send_max_retries should show '(0-10)'."""
-        from nanobot.config.schema import ChannelsConfig
+    def test_real_dream_max_iterations_hint(self):
+        """DreamConfig.max_iterations should expose a lower bound in hints."""
+        from nanobot.config.schema import DreamConfig
 
-        field_info = ChannelsConfig.model_fields["send_max_retries"]
+        field_info = DreamConfig.model_fields["max_iterations"]
         hint = _get_constraint_hint(field_info)
-        assert "0" in hint
-        assert "10" in hint
+        assert "1" in hint
 
 
 class TestInputTextWithValidation:
@@ -759,45 +748,6 @@ class TestInputTextWithValidation:
         assert result == 42
 
 
-class TestChannelCommonRegistration:
-    """Tests for Channel Common menu registration."""
-
-    def test_channel_common_in_settings_sections(self):
-        """Channel Common should be registered in _SETTINGS_SECTIONS."""
-        from nanobot.cli.onboard import _SETTINGS_SECTIONS
-
-        assert "Channel Common" in _SETTINGS_SECTIONS
-
-    def test_channel_common_getter_returns_channels(self):
-        """Channel Common getter should return config.channels."""
-        from nanobot.cli.onboard import _SETTINGS_GETTER
-
-        config = Config()
-        result = _SETTINGS_GETTER["Channel Common"](config)
-        assert result is config.channels
-
-    def test_channel_common_setter_writes_channels(self):
-        """Channel Common setter should update config.channels."""
-        from nanobot.cli.onboard import _SETTINGS_SETTER
-
-        config = Config()
-        original = config.channels
-        new_channels = original.model_copy(deep=True)
-        new_channels.send_tool_hints = True
-        _SETTINGS_SETTER["Channel Common"](config, new_channels)
-        assert config.channels.send_tool_hints is True
-
-    def test_channel_common_edit_preserves_extras(self):
-        """Editing Channel Common should not lose per-channel extras."""
-        config = Config()
-        config.channels.feishu = {"enabled": True, "appId": "test123"}
-        channels = config.channels.model_copy(deep=True)
-        channels.send_tool_hints = True
-        config.channels = channels
-        assert config.channels.send_tool_hints is True
-        assert config.channels.feishu["appId"] == "test123"
-
-
 class TestApiServerRegistration:
     """Tests for API Server menu registration."""
 
@@ -829,20 +779,7 @@ class TestApiServerRegistration:
 
 
 class TestMainMenuUpdate:
-    """Tests for main menu including new Channel Common and API Server items."""
-
-    def test_main_menu_dispatch_includes_channel_common(self):
-        """Main menu dispatch should route [H] to Channel Common."""
-        from nanobot.cli.onboard import run_onboard
-
-        # We verify by checking the dispatch table is set up correctly
-        # The menu items are defined inline in run_onboard, so we test
-        # that _configure_general_settings handles the new sections.
-        from nanobot.cli.onboard import _SETTINGS_SECTIONS, _SETTINGS_GETTER, _SETTINGS_SETTER
-
-        assert "Channel Common" in _SETTINGS_SECTIONS
-        assert "Channel Common" in _SETTINGS_GETTER
-        assert "Channel Common" in _SETTINGS_SETTER
+    """Tests for main menu including Agent Settings and API Server."""
 
     def test_main_menu_dispatch_includes_api_server(self):
         """Main menu dispatch should route [I] to API Server."""
@@ -852,12 +789,12 @@ class TestMainMenuUpdate:
         assert "API Server" in _SETTINGS_GETTER
         assert "API Server" in _SETTINGS_SETTER
 
-    def test_run_onboard_channel_common_edit(self, monkeypatch):
-        """run_onboard should handle [H] Channel Common correctly."""
+    def test_run_onboard_agent_settings_edit(self, monkeypatch):
+        """run_onboard should handle [A] Agent Settings correctly."""
         initial_config = Config()
 
         responses = iter([
-            "[H] Channel Common",
+            "[A] Agent Settings",
             KeyboardInterrupt(),
             "[S] Save and Exit",
         ])
@@ -875,8 +812,8 @@ class TestMainMenuUpdate:
             return FakePrompt(next(responses))
 
         def fake_configure_general_settings(config, section):
-            if section == "Channel Common":
-                config.channels.send_tool_hints = True
+            if section == "Agent Settings":
+                config.agents.defaults.send_tool_hints = True
 
         monkeypatch.setattr(onboard_wizard, "_show_main_menu_header", lambda: None)
         monkeypatch.setattr(onboard_wizard, "questionary", SimpleNamespace(select=fake_select))
@@ -885,7 +822,7 @@ class TestMainMenuUpdate:
         result = run_onboard(initial_config=initial_config)
 
         assert result.should_save is True
-        assert result.config.channels.send_tool_hints is True
+        assert result.config.agents.defaults.send_tool_hints is True
 
     def test_run_onboard_api_server_edit(self, monkeypatch):
         """run_onboard should handle [I] API Server correctly."""
@@ -954,7 +891,6 @@ class TestMainMenuUpdate:
         # Suppress summary output but still call _pause
         monkeypatch.setattr(onboard_wizard, "_print_summary_panel", lambda *a, **kw: None)
         monkeypatch.setattr(onboard_wizard, "_get_provider_names", lambda: {})
-        monkeypatch.setattr(onboard_wizard, "_get_channel_names", lambda: {})
 
         result = run_onboard(initial_config=initial_config)
 

@@ -13,22 +13,6 @@ x-common-config: &common-config
     - seccomp=unconfined
 
 services:
-  nanobot-gateway:
-    container_name: nanobot-gateway
-    <<: *common-config
-    command: ["gateway"]
-    restart: unless-stopped
-    ports:
-      - 18790:18790
-    deploy:
-      resources:
-        limits:
-          cpus: "1"
-          memory: 1G
-        reservations:
-          cpus: "0.25"
-          memory: 256M
-
   nanobot-api:
     container_name: nanobot-api
     <<: *common-config

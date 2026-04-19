@@ -1,4 +1,4 @@
-"""Async message queue for decoupled channel-agent communication."""
+"""Async message queue for decoupled caller-agent communication."""
 
 import asyncio
 
@@ -7,10 +7,9 @@ from nanobot.bus.events import InboundMessage, OutboundMessage
 
 class MessageBus:
     """
-    Async message bus that decouples chat channels from the agent core.
+    Async message bus between inbound producers (CLI、API 等) and the agent.
 
-    Channels push messages to the inbound queue, and the agent processes
-    them and pushes responses to the outbound queue.
+    Producers push to the inbound queue; the agent pushes replies to the outbound queue.
     """
 
     def __init__(self):
@@ -18,7 +17,7 @@ class MessageBus:
         self.outbound: asyncio.Queue[OutboundMessage] = asyncio.Queue()
 
     async def publish_inbound(self, msg: InboundMessage) -> None:
-        """Publish a message from a channel to the agent."""
+        """Publish a user message to the agent."""
         await self.inbound.put(msg)
 
     async def consume_inbound(self) -> InboundMessage:
@@ -26,7 +25,7 @@ class MessageBus:
         return await self.inbound.get()
 
     async def publish_outbound(self, msg: OutboundMessage) -> None:
-        """Publish a response from the agent to channels."""
+        """Publish an agent response for consumers (e.g. CLI) to handle."""
         await self.outbound.put(msg)
 
     async def consume_outbound(self) -> OutboundMessage:

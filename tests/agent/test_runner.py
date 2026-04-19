@@ -959,7 +959,7 @@ async def test_llm_error_not_appended_to_session_messages():
 @pytest.mark.asyncio
 async def test_streamed_flag_not_set_on_llm_error(tmp_path):
     """When LLM errors during a streaming-capable channel interaction,
-    _streamed must NOT be set so ChannelManager delivers the error."""
+    _streamed must NOT be set so the outbound path can deliver the error."""
     from nanobot.agent.loop import AgentLoop
     from nanobot.bus.events import InboundMessage
     from nanobot.bus.queue import MessageBus
@@ -2926,7 +2926,7 @@ async def test_runner_binds_on_retry_wait_to_retry_callback_not_progress():
     ``retry_wait_callback``, not ``progress_callback``. Binding them to
     the progress callback (as an earlier runtime refactor did) caused
     internal retry diagnostics like "Model request failed, retry in 1s"
-    to leak to end-user channels as normal progress updates.
+    to leak to the CLI/UI as normal progress updates.
     """
     from nanobot.agent.runner import AgentRunSpec, AgentRunner
 

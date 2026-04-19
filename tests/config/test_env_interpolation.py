@@ -26,9 +26,9 @@ class TestResolveEnvVars:
 
     def test_nested_dicts(self, monkeypatch):
         monkeypatch.setenv("TOKEN", "abc123")
-        data = {"channels": {"telegram": {"token": "${TOKEN}"}}}
+        data = {"providers": {"groq": {"apiKey": "${TOKEN}"}}}
         result = _resolve_env_vars(data)
-        assert result["channels"]["telegram"]["token"] == "abc123"
+        assert result["providers"]["groq"]["apiKey"] == "abc123"
 
     def test_lists(self, monkeypatch):
         monkeypatch.setenv("VAL", "x")
@@ -70,7 +70,7 @@ class TestResolveConfig:
         config_path = tmp_path / "config.json"
         config_path.write_text(
             json.dumps(
-                {"channels": {"telegram": {"token": "${MY_TOKEN}"}}}
+                {"providers": {"groq": {"apiKey": "${MY_TOKEN}"}}}
             ),
             encoding="utf-8",
         )
@@ -79,4 +79,4 @@ class TestResolveConfig:
         save_config(raw, config_path)
 
         saved = json.loads(config_path.read_text(encoding="utf-8"))
-        assert saved["channels"]["telegram"]["token"] == "${MY_TOKEN}"
+        assert saved["providers"]["groq"]["apiKey"] == "${MY_TOKEN}"

@@ -22,7 +22,6 @@ from nanobot.agent.skills import BUILTIN_SKILLS_DIR
 from nanobot.agent.subagent import SubagentManager
 from nanobot.agent.tools.cron import CronTool
 from nanobot.agent.tools.filesystem import EditFileTool, ListDirTool, ReadFileTool, WriteFileTool
-from nanobot.agent.tools.message import MessageTool
 from nanobot.agent.tools.notebook import NotebookEditTool
 from nanobot.agent.tools.registry import ToolRegistry
 from nanobot.agent.tools.search import GlobTool, GrepTool
@@ -42,7 +41,7 @@ from nanobot.utils.helpers import truncate_text as truncate_text_fn
 from nanobot.utils.runtime import EMPTY_FINAL_RESPONSE_MESSAGE
 
 if TYPE_CHECKING:
-    from nanobot.config.schema import ChannelsConfig, ExecToolConfig, ToolsConfig, WebToolsConfig
+    from nanobot.config.schema import ExecToolConfig, ToolsConfig, WebToolsConfig
     from nanobot.cron.service import CronService
 
 
@@ -61,7 +60,6 @@ class _LoopHook(AgentHook):
         *,
         channel: str = "cli",
         chat_id: str = "direct",
-        message_id: str | None = None,
     ) -> None:
         super().__init__(reraise=True)
         self._loop = agent_loop
@@ -70,7 +68,6 @@ class _LoopHook(AgentHook):
         self._on_stream_end = on_stream_end
         self._channel = channel
         self._chat_id = chat_id
-        self._message_id = message_id
         self._stream_buf = ""
 
     def wants_streaming(self) -> bool:
@@ -107,7 +104,7 @@ class _LoopHook(AgentHook):
         for tc in context.tool_calls:
             args_str = json.dumps(tc.arguments, ensure_ascii=False)
             logger.info("Tool call: {}({})", tc.name, args_str[:200])
-        self._loop._set_tool_context(self._channel, self._chat_id, self._message_id)
+        self._loop._set_tool_context(self._channel, self._chat_id)
 
     async def after_iteration(self, context: AgentHookContext) -> None:
         u = context.usage or {}
@@ -154,7 +151,8 @@ class AgentLoop:
         restrict_to_workspace: bool = False,
         session_manager: SessionManager | None = None,
         mcp_servers: dict | None = None,
-        channels_config: ChannelsConfig | None = None,
+        send_progress: bool = True,
+        send_tool_hints: bool = False,
         timezone: str | None = None,
         session_ttl_minutes: int = 0,
         hooks: list[AgentHook] | None = None,
@@ -167,7 +165,8 @@ class AgentLoop:
         _tc = tools_config or ToolsConfig()
         defaults = AgentDefaults()
         self.bus = bus
-        self.channels_config = channels_config
+        self.send_progress = send_progress
+        self.send_tool_hints = send_tool_hints
         self.provider = provider
         self.workspace = workspace
         self.model = model or provider.get_default_model()
@@ -287,7 +286,6 @@ class AgentLoop:
                 WebSearchTool(config=self.web_config.search, proxy=self.web_config.proxy)
             )
             self.tools.register(WebFetchTool(proxy=self.web_config.proxy))
-        self.tools.register(MessageTool(send_callback=self.bus.publish_outbound))
         self.tools.register(SpawnTool(manager=self.subagents))
         if self.cron_service:
             self.tools.register(
@@ -316,12 +314,12 @@ class AgentLoop:
         finally:
             self._mcp_connecting = False
 
-    def _set_tool_context(self, channel: str, chat_id: str, message_id: str | None = None) -> None:
+    def _set_tool_context(self, channel: str, chat_id: str) -> None:
         """Update context for all tools that need routing info."""
-        for name in ("message", "spawn", "cron", "my"):
+        for name in ("spawn", "cron", "my"):
             if tool := self.tools.get(name):
                 if hasattr(tool, "set_context"):
-                    tool.set_context(channel, chat_id, *([message_id] if name == "message" else []))
+                    tool.set_context(channel, chat_id)
 
     @staticmethod
     def _strip_think(text: str | None) -> str | None:
@@ -356,7 +354,6 @@ class AgentLoop:
         session: Session | None = None,
         channel: str = "cli",
         chat_id: str = "direct",
-        message_id: str | None = None,
         pending_queue: asyncio.Queue | None = None,
     ) -> tuple[str | None, list[str], list[dict], str, bool]:
         """Run the agent iteration loop.
@@ -375,7 +372,6 @@ class AgentLoop:
             on_stream_end=on_stream_end,
             channel=channel,
             chat_id=chat_id,
-            message_id=message_id,
         )
         hook: AgentHook = (
             CompositeHook([loop_hook] + self._extra_hooks) if self._extra_hooks else loop_hook
@@ -436,8 +432,7 @@ class AgentLoop:
         self._last_usage = result.usage
         if result.stop_reason == "max_iterations":
             logger.warning("Max iterations ({}) reached", self.max_iterations)
-            # Push final content through stream so streaming channels (e.g. Feishu)
-            # update the card instead of leaving it empty.
+            # Push final content through stream so the UI can finalize partial output.
             if on_stream and on_stream_end:
                 await on_stream(result.final_content or "")
                 await on_stream_end(resuming=False)
@@ -660,7 +655,7 @@ class AgentLoop:
             is_subagent = msg.sender_id == "subagent"
             if is_subagent and self._persist_subagent_followup(session, msg):
                 self.sessions.save(session)
-            self._set_tool_context(channel, chat_id, msg.metadata.get("message_id"))
+            self._set_tool_context(channel, chat_id)
             history = session.get_history(max_messages=0)
             current_role = "assistant" if is_subagent else "user"
 
@@ -676,7 +671,6 @@ class AgentLoop:
             )
             final_content, _, all_msgs, _, _ = await self._run_agent_loop(
                 messages, session=session, channel=channel, chat_id=chat_id,
-                message_id=msg.metadata.get("message_id"),
             )
             self._save_turn(session, all_msgs, 1 + len(history))
             self._clear_runtime_checkpoint(session)
@@ -688,8 +682,7 @@ class AgentLoop:
                 content=final_content or "Background task completed.",
             )
 
-        # Extract document text from media at the processing boundary so all
-        # channels benefit without format-specific logic in ContextBuilder.
+        # Extract document text from media at the processing boundary for all session routes.
         if msg.media:
             new_content, image_only = extract_documents(msg.content, msg.media)
             msg = dataclasses.replace(msg, content=new_content, media=image_only)
@@ -717,10 +710,7 @@ class AgentLoop:
             session_summary=pending,
         )
 
-        self._set_tool_context(msg.channel, msg.chat_id, msg.metadata.get("message_id"))
-        if message_tool := self.tools.get("message"):
-            if isinstance(message_tool, MessageTool):
-                message_tool.start_turn()
+        self._set_tool_context(msg.channel, msg.chat_id)
 
         history = session.get_history(max_messages=0)
 
@@ -780,7 +770,6 @@ class AgentLoop:
             session=session,
             channel=msg.channel,
             chat_id=msg.chat_id,
-            message_id=msg.metadata.get("message_id"),
             pending_queue=pending_queue,
         )
 
@@ -794,16 +783,6 @@ class AgentLoop:
         self._clear_runtime_checkpoint(session)
         self.sessions.save(session)
         self._schedule_background(self.consolidator.maybe_consolidate_by_tokens(session))
-
-        # When follow-up messages were injected mid-turn, a later natural
-        # language reply may address those follow-ups and should not be
-        # suppressed just because MessageTool was used earlier in the turn.
-        # However, if the turn falls back to the empty-final-response
-        # placeholder, suppress it when the real user-visible output already
-        # came from MessageTool.
-        if (mt := self.tools.get("message")) and isinstance(mt, MessageTool) and mt._sent_in_turn:
-            if not had_injections or stop_reason == "empty_final_response":
-                return None
 
         preview = final_content[:120] + "..." if len(final_content) > 120 else final_content
         logger.info("Response to {}:{}: {}", msg.channel, msg.sender_id, preview)

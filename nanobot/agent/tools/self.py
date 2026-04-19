@@ -42,7 +42,7 @@ class MyTool(Tool):
         "_mcp_servers", "_mcp_stacks", "_pending_queues",
         "_session_locks", "_active_tasks", "_background_tasks",
         # Security boundaries (inspect + modify both blocked)
-        "restrict_to_workspace", "channels_config",
+        "restrict_to_workspace", "send_progress", "send_tool_hints",
         "_concurrency_gate", "_unified_session", "_extra_hooks",
     })
 

@@ -26,7 +26,8 @@ def _make_mock_loop(**overrides):
     loop.restrict_to_workspace = False
     loop._start_time = 1000.0
     loop.exec_config = MagicMock()
-    loop.channels_config = MagicMock()
+    loop.send_progress = True
+    loop.send_tool_hints = False
     loop._last_usage = {"prompt_tokens": 100, "completion_tokens": 50}
     loop._runtime_vars = {}
     loop._current_iteration = 0
@@ -1022,10 +1023,10 @@ class TestSecurityAttributeProtection:
         assert "read-only" in result
 
     @pytest.mark.asyncio
-    async def test_modify_channels_config_blocked(self):
-        """channels_config is BLOCKED — cannot be modified."""
+    async def test_modify_send_progress_blocked(self):
+        """send_progress is BLOCKED — cannot be modified via my tool."""
         tool = _make_tool()
-        result = await tool.execute(action="set", key="channels_config", value={})
+        result = await tool.execute(action="set", key="send_progress", value=False)
         assert "protected" in result
 
     @pytest.mark.asyncio

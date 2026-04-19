@@ -324,7 +324,7 @@ async def cmd_help(ctx: CommandContext) -> OutboundMessage:
 
 
 def build_help_text() -> str:
-    """Build canonical help text shared across channels."""
+    """Build canonical help text for slash commands."""
     lines = [
         "🐈 nanobot commands:",
         "/new — Start a new conversation",
