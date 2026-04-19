@@ -29,6 +29,7 @@ dependencies = [
     "readability-lxml>=0.8.4,<1.0.0",
     "rich>=14.0.0,<15.0.0",
     "croniter>=6.0.0,<7.0.0",
+    "tzdata>=2024.1",
     "prompt-toolkit>=3.0.50,<4.0.0",
     "questionary>=2.0.0,<3.0.0",
     "mcp>=1.26.0,<2.0.0",
