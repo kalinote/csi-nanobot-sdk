@@ -67,7 +67,7 @@ def test_extract_usage_openai_cached_tokens_dict():
 
 
 def test_extract_usage_deepseek_cached_tokens_dict():
-    """prompt_cache_hit_tokens from a DeepSeek dict response."""
+    """prompt_cache_hit_tokens 字段也应归一为 cached_tokens。"""
     p = _provider()
     response = {
         "choices": [_DICT_CHOICE],
@@ -131,7 +131,7 @@ def test_extract_usage_openai_cached_tokens_obj():
 
 
 def test_extract_usage_deepseek_cached_tokens_obj():
-    """prompt_cache_hit_tokens from a DeepSeek SDK object response."""
+    """SDK 对象分支：prompt_cache_hit_tokens 字段也应归一为 cached_tokens。"""
     p = _provider()
     usage_obj = FakeUsage(
         prompt_tokens=1500,
@@ -145,7 +145,7 @@ def test_extract_usage_deepseek_cached_tokens_obj():
 
 
 def test_extract_usage_stepfun_top_level_cached_tokens_dict():
-    """StepFun/Moonshot: usage.cached_tokens at top level (not nested)."""
+    """兼容端可能在 usage 顶层直接返回 cached_tokens。"""
     p = _provider()
     response = {
         "choices": [_DICT_CHOICE],
@@ -161,7 +161,7 @@ def test_extract_usage_stepfun_top_level_cached_tokens_dict():
 
 
 def test_extract_usage_stepfun_top_level_cached_tokens_obj():
-    """StepFun/Moonshot: usage.cached_tokens as SDK object attribute."""
+    """SDK 对象分支：usage.cached_tokens 顶层字段也应被识别。"""
     p = _provider()
     usage_obj = FakeUsage(
         prompt_tokens=591,

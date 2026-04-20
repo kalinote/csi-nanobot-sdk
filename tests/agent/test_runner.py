@@ -381,7 +381,7 @@ def test_persist_tool_result_logs_cleanup_failures(monkeypatch, tmp_path):
     )
     monkeypatch.setattr(
         "nanobot.utils.helpers.logger.warning",
-        lambda message, *args: warnings.append(message.format(*args)),
+        lambda message, *args: warnings.append(message % args if args else str(message)),
     )
 
     persisted = maybe_persist_tool_result(
@@ -393,7 +393,7 @@ def test_persist_tool_result_logs_cleanup_failures(monkeypatch, tmp_path):
     )
 
     assert "[tool output persisted]" in persisted
-    assert warnings and "Failed to clean stale tool result buckets" in warnings[0]
+    assert warnings and "清理过期的工具输出目录失败" in warnings[0]
 
 
 @pytest.mark.asyncio

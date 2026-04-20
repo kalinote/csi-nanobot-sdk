@@ -16,7 +16,7 @@ def provider():
     """A direct-OpenAI provider with Responses API support."""
     p = OpenAICompatProvider.__new__(OpenAICompatProvider)
     p.default_model = "gpt-5"
-    p._spec = type("Spec", (), {"name": "openai"})()
+    p._spec = type("Spec", (), {"name": "openai_compat"})()
     p._effective_base = "https://api.openai.com/v1"
     p._responses_failures = {}
     p._responses_tripped_at = {}

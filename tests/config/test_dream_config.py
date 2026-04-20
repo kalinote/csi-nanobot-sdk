@@ -39,10 +39,10 @@ def test_dream_config_dump_uses_interval_h_and_hides_legacy_cron() -> None:
 
 
 def test_dream_config_uses_model_override_name_and_accepts_legacy_model() -> None:
-    cfg = DreamConfig.model_validate({"model": "openrouter/sonnet"})
+    cfg = DreamConfig.model_validate({"model": "anthropic/claude-sonnet-4-6"})
 
     dumped = cfg.model_dump(by_alias=True)
 
-    assert cfg.model_override == "openrouter/sonnet"
-    assert dumped["modelOverride"] == "openrouter/sonnet"
+    assert cfg.model_override == "anthropic/claude-sonnet-4-6"
+    assert dumped["modelOverride"] == "anthropic/claude-sonnet-4-6"
     assert "model" not in dumped

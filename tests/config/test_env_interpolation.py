@@ -26,9 +26,9 @@ class TestResolveEnvVars:
 
     def test_nested_dicts(self, monkeypatch):
         monkeypatch.setenv("TOKEN", "abc123")
-        data = {"providers": {"groq": {"apiKey": "${TOKEN}"}}}
+        data = {"providers": {"openaiCompat": {"apiKey": "${TOKEN}"}}}
         result = _resolve_env_vars(data)
-        assert result["providers"]["groq"]["apiKey"] == "abc123"
+        assert result["providers"]["openaiCompat"]["apiKey"] == "abc123"
 
     def test_lists(self, monkeypatch):
         monkeypatch.setenv("VAL", "x")
@@ -54,23 +54,23 @@ class TestResolveConfig:
         config_path = tmp_path / "config.json"
         config_path.write_text(
             json.dumps(
-                {"providers": {"groq": {"apiKey": "${TEST_API_KEY}"}}}
+                {"providers": {"openaiCompat": {"apiKey": "${TEST_API_KEY}"}}}
             ),
             encoding="utf-8",
         )
 
         raw = load_config(config_path)
-        assert raw.providers.groq.api_key == "${TEST_API_KEY}"
+        assert raw.providers.openai_compat.api_key == "${TEST_API_KEY}"
 
         resolved = resolve_config_env_vars(raw)
-        assert resolved.providers.groq.api_key == "resolved-key"
+        assert resolved.providers.openai_compat.api_key == "resolved-key"
 
     def test_save_preserves_templates(self, tmp_path, monkeypatch):
         monkeypatch.setenv("MY_TOKEN", "real-token")
         config_path = tmp_path / "config.json"
         config_path.write_text(
             json.dumps(
-                {"providers": {"groq": {"apiKey": "${MY_TOKEN}"}}}
+                {"providers": {"openaiCompat": {"apiKey": "${MY_TOKEN}"}}}
             ),
             encoding="utf-8",
         )
@@ -79,4 +79,4 @@ class TestResolveConfig:
         save_config(raw, config_path)
 
         saved = json.loads(config_path.read_text(encoding="utf-8"))
-        assert saved["providers"]["groq"]["apiKey"] == "${MY_TOKEN}"
+        assert saved["providers"]["openaiCompat"]["apiKey"] == "${MY_TOKEN}"

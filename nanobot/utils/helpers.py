@@ -219,7 +219,7 @@ def maybe_persist_tool_result(
     try:
         _cleanup_tool_result_buckets(root, bucket)
     except Exception as exc:
-        logger.warning("Failed to clean stale tool result buckets in {}: {}", root, exc)
+        logger.warning("清理过期的工具输出目录失败：%s：%s" % (root, exc))
     path = bucket / f"{safe_filename(tool_call_id)}.{suffix}"
     if not path.exists():
         if suffix == "json" and isinstance(content, list):
@@ -469,9 +469,8 @@ def sync_workspace_templates(workspace: Path, silent: bool = False) -> list[str]
     (workspace / "skills").mkdir(exist_ok=True)
 
     if added and not silent:
-        from rich.console import Console
         for name in added:
-            Console().print(f"  [dim]Created {name}[/dim]")
+            logger.info("已创建 %s" % name)
 
     # Initialize git for memory version control
     try:
@@ -481,6 +480,6 @@ def sync_workspace_templates(workspace: Path, silent: bool = False) -> list[str]
         ])
         gs.init()
     except Exception:
-        logger.warning("Failed to initialize git store for {}", workspace)
+        logger.warning("初始化 git 存储失败：%s" % workspace)
 
     return added

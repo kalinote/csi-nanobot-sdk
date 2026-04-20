@@ -21,8 +21,7 @@ if os.environ.get("LANGFUSE_SECRET_KEY") and importlib.util.find_spec("langfuse"
     from langfuse.openai import AsyncOpenAI
 else:
     if os.environ.get("LANGFUSE_SECRET_KEY"):
-        import logging
-        logging.getLogger(__name__).warning(
+        logger.warning(
             "LANGFUSE_SECRET_KEY is set but langfuse is not installed; "
             "install with `pip install langfuse` to enable tracing"
         )
@@ -47,34 +46,6 @@ _ALNUM = string.ascii_letters + string.digits
 
 _STANDARD_TC_KEYS = frozenset({"id", "type", "index", "function"})
 _STANDARD_FN_KEYS = frozenset({"name", "arguments"})
-_DEFAULT_OPENROUTER_HEADERS = {
-    "HTTP-Referer": "https://github.com/HKUDS/nanobot",
-    "X-OpenRouter-Title": "nanobot",
-    "X-OpenRouter-Categories": "cli-agent,personal-agent",
-}
-_KIMI_THINKING_MODELS: frozenset[str] = frozenset({
-    "kimi-k2.5",
-    "k2.6-code-preview",
-})
-
-
-def _is_kimi_thinking_model(model_name: str) -> bool:
-    """Return True if model_name refers to a Kimi thinking-capable model.
-
-    Supports two forms:
-    - Exact match: kimi-k2.5 in _KIMI_THINKING_MODELS
-    - Slug match:  moonshotai/kimi-k2.5 -> the part after the last "/"
-                   is checked against _KIMI_THINKING_MODELS
-
-    This covers both the native Moonshot provider (bare slug) and
-    OpenRouter-style names (``"publisher/slug"``).
-    """
-    name = model_name.lower()
-    if name in _KIMI_THINKING_MODELS:
-        return True
-    if "/" in name and name.rsplit("/", 1)[1] in _KIMI_THINKING_MODELS:
-        return True
-    return False
 
 
 def _short_tool_id() -> str:
@@ -138,13 +109,6 @@ def _extract_tc_extras(tc: Any) -> tuple[
     return extra_content, prov, fn_prov
 
 
-def _uses_openrouter_attribution(spec: "ProviderSpec | None", api_base: str | None) -> bool:
-    """Apply Nanobot attribution headers to OpenRouter requests by default."""
-    if spec and spec.name == "openrouter":
-        return True
-    return bool(api_base and "openrouter" in api_base.lower())
-
-
 _RESPONSES_FAILURE_THRESHOLD = 3
 _RESPONSES_PROBE_INTERVAL_S = 300  # 5 minutes
 
@@ -154,7 +118,7 @@ def _is_direct_openai_base(api_base: str | None) -> bool:
     if not api_base:
         return True
     normalized = api_base.strip().lower().rstrip("/")
-    return "api.openai.com" in normalized and "openrouter" not in normalized
+    return "api.openai.com" in normalized
 
 
 def _responses_circuit_key(
@@ -193,8 +157,6 @@ class OpenAICompatProvider(LLMProvider):
         effective_base = api_base or (spec.default_api_base if spec else None) or None
         self._effective_base = effective_base
         default_headers = {"x-session-affinity": uuid.uuid4().hex}
-        if _uses_openrouter_attribution(spec, effective_base):
-            default_headers.update(_DEFAULT_OPENROUTER_HEADERS)
         if extra_headers:
             default_headers.update(extra_headers)
 
@@ -361,9 +323,6 @@ class OpenAICompatProvider(LLMProvider):
             if any(model_name.lower().startswith(k) for k in ("anthropic/", "claude")):
                 messages, tools = self._apply_cache_control(messages, tools)
 
-        if spec and spec.strip_model_prefix:
-            model_name = model_name.split("/")[-1]
-
         kwargs: dict[str, Any] = {
             "model": model_name,
             "messages": self._sanitize_messages(self._sanitize_empty_content(messages)),
@@ -379,43 +338,8 @@ class OpenAICompatProvider(LLMProvider):
         else:
             kwargs["max_tokens"] = max(1, max_tokens)
 
-        if spec:
-            model_lower = model_name.lower()
-            for pattern, overrides in spec.model_overrides:
-                if pattern in model_lower:
-                    kwargs.update(overrides)
-                    break
-
         if reasoning_effort:
             kwargs["reasoning_effort"] = reasoning_effort
-
-        # Provider-specific thinking parameters.
-        # Only sent when reasoning_effort is explicitly configured so that
-        # the provider default is preserved otherwise.
-        if spec and reasoning_effort is not None:
-            thinking_enabled = reasoning_effort.lower() != "minimal"
-            extra: dict[str, Any] | None = None
-            if spec.name == "dashscope":
-                extra = {"enable_thinking": thinking_enabled}
-            elif spec.name in (
-                "volcengine", "volcengine_coding_plan",
-                "byteplus", "byteplus_coding_plan",
-            ):
-                extra = {
-                    "thinking": {"type": "enabled" if thinking_enabled else "disabled"}
-                }
-            if extra:
-                kwargs.setdefault("extra_body", {}).update(extra)
-
-        # Model-level thinking injection for Kimi thinking-capable models.
-        # Strip any provider prefix (e.g. "moonshotai/") before the set lookup
-        # so that OpenRouter-style names like "moonshotai/kimi-k2.5" are handled
-        # identically to bare names like "kimi-k2.5".
-        if reasoning_effort is not None and _is_kimi_thinking_model(model_name):
-            thinking_enabled = reasoning_effort.lower() != "minimal"
-            kwargs.setdefault("extra_body", {}).update(
-                {"thinking": {"type": "enabled" if thinking_enabled else "disabled"}}
-            )
 
         if tools:
             kwargs["tools"] = tools
@@ -429,7 +353,10 @@ class OpenAICompatProvider(LLMProvider):
         reasoning_effort: str | None,
     ) -> bool:
         """Use Responses API only for direct OpenAI requests that benefit from it."""
-        if self._spec and self._spec.name != "openai":
+        # When spec is provided, only the explicit OpenAI-compatible provider
+        # is allowed to use the Responses API. When spec is absent, treat this
+        # instance as the default OpenAI-compatible provider.
+        if self._spec and self._spec.name != "openai_compat":
             return False
         if not _is_direct_openai_base(self._effective_base):
             return False
