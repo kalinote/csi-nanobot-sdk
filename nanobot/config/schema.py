@@ -7,8 +7,6 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 from pydantic_settings import BaseSettings
 
-from nanobot.cron.types import CronSchedule
-
 
 class Base(BaseModel):
     """Base model that accepts both camelCase and snake_case keys."""
@@ -17,11 +15,6 @@ class Base(BaseModel):
 
 class DreamConfig(Base):
     """Dream memory consolidation configuration."""
-
-    _HOUR_MS = 3_600_000
-
-    interval_h: int = Field(default=2, ge=1)  # Every 2 hours by default
-    cron: str | None = Field(default=None, exclude=True)  # Legacy compatibility override
     model_override: str | None = Field(
         default=None,
         validation_alias=AliasChoices("modelOverride", "model", "model_override"),
@@ -29,23 +22,6 @@ class DreamConfig(Base):
     max_batch_size: int = Field(default=20, ge=1)  # Max history entries per run
     # Bumped from 10 to 15 in #3212 (exp002: +30% dedup, no accuracy loss; >15 plateaus).
     max_iterations: int = Field(default=15, ge=1)  # Max tool calls per Phase 2
-    # Per-line git-blame age annotation in Phase 1 prompt (see #3212). Default
-    # on — set to False to feed MEMORY.md raw if a specific LLM reacts poorly
-    # to the `← Nd` suffix or you want deterministic, git-independent prompts.
-    annotate_line_ages: bool = True
-
-    def build_schedule(self, timezone: str) -> CronSchedule:
-        """Build the runtime schedule, preferring the legacy cron override if present."""
-        if self.cron:
-            return CronSchedule(kind="cron", expr=self.cron, tz=timezone)
-        return CronSchedule(kind="every", every_ms=self.interval_h * self._HOUR_MS)
-
-    def describe_schedule(self) -> str:
-        """Return a human-readable summary for logs and startup output."""
-        if self.cron:
-            return f"cron {self.cron} (legacy)"
-        hours = self.interval_h
-        return f"every {hours}h"
 
 
 class AgentDefaults(Base):

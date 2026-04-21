@@ -294,7 +294,7 @@ class TestAutoCompactIdleDetection:
 
     @pytest.mark.asyncio
     async def test_auto_compact_does_not_affect_priority_commands(self, tmp_path):
-        """Priority commands (/stop, /restart) bypass _process_message entirely via run()."""
+        """Priority commands (e.g. /stop) bypass _process_message entirely via run()."""
         loop = _make_loop(tmp_path, session_ttl_minutes=15)
         session = loop.sessions.get_or_create("cli:test")
         session.add_message("user", "old message")

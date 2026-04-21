@@ -1,15 +1,14 @@
-"""Tests for /restart slash command."""
+"""CLI slash command 相关测试。"""
 
 from __future__ import annotations
 
 import asyncio
 import time
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from nanobot.bus.events import InboundMessage, OutboundMessage
+from nanobot.bus.events import InboundMessage
 from nanobot.providers.base import LLMResponse
 
 
@@ -40,64 +39,7 @@ async def _wait_until(predicate, *, timeout: float = 0.2, interval: float = 0.01
     assert predicate()
 
 
-class TestRestartCommand:
-
-    @pytest.mark.asyncio
-    async def test_restart_sends_message_and_calls_execv(self):
-        from nanobot.command.builtin import cmd_restart
-        from nanobot.command.router import CommandContext
-
-        loop, _bus = _make_loop()
-        msg = InboundMessage(channel="cli", sender_id="user", chat_id="direct", content="/restart")
-        ctx = CommandContext(msg=msg, session=None, key=msg.session_key, raw="/restart", loop=loop)
-
-        async def _fast_sleep(_delay: float) -> None:
-            return None
-
-        scheduled: list[asyncio.Task] = []
-
-        def _capture_task(coro):
-            task = asyncio.create_task(coro)
-            scheduled.append(task)
-            return task
-
-        fake_asyncio = SimpleNamespace(
-            sleep=_fast_sleep,
-            create_task=_capture_task,
-        )
-
-        with patch("nanobot.command.builtin.asyncio", new=fake_asyncio), \
-             patch("nanobot.command.builtin.os.execv") as mock_execv:
-            out = await cmd_restart(ctx)
-            assert "Restarting" in out.content
-
-            assert scheduled
-            await scheduled[0]
-            mock_execv.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_restart_intercepted_in_run_loop(self):
-        """Verify /restart is handled at the run-loop level, not inside _dispatch."""
-        loop, bus = _make_loop()
-        msg = InboundMessage(channel="telegram", sender_id="u1", chat_id="c1", content="/restart")
-
-        with patch.object(loop, "_dispatch", new_callable=AsyncMock) as mock_dispatch, \
-             patch("nanobot.command.builtin.os.execv"):
-            await bus.publish_inbound(msg)
-
-            loop._running = True
-            run_task = asyncio.create_task(loop.run())
-            await asyncio.sleep(0.1)
-            loop._running = False
-            run_task.cancel()
-            try:
-                await run_task
-            except asyncio.CancelledError:
-                pass
-
-            mock_dispatch.assert_not_called()
-            out = await asyncio.wait_for(bus.consume_outbound(), timeout=1.0)
-            assert "Restarting" in out.content
+class TestCliCommands:
 
     @pytest.mark.asyncio
     async def test_status_intercepted_in_run_loop(self):
@@ -135,14 +77,15 @@ class TestRestartCommand:
             await asyncio.wait_for(run_task, timeout=1.0)
 
     @pytest.mark.asyncio
-    async def test_help_includes_restart(self):
+    async def test_help_lists_core_commands(self):
         loop, bus = _make_loop()
         msg = InboundMessage(channel="telegram", sender_id="u1", chat_id="c1", content="/help")
 
         response = await loop._process_message(msg)
 
         assert response is not None
-        assert "/restart" in response.content
+        assert "/dream" in response.content
+        assert "/stop" in response.content
         assert "/status" in response.content
         assert response.metadata == {"render_as": "text"}
 

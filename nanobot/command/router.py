@@ -29,7 +29,7 @@ class CommandRouter:
 
     Three tiers checked in order:
       1. *priority* — exact-match commands handled before the dispatch lock
-         (e.g. /stop, /restart).
+         (e.g. /stop, /status).
       2. *exact* — exact-match commands handled inside the dispatch lock.
       3. *prefix* — longest-prefix-first match (e.g. "/team ").
       4. *interceptors* — fallback predicates (e.g. team-mode active check).

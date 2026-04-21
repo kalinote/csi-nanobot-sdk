@@ -472,14 +472,4 @@ def sync_workspace_templates(workspace: Path, silent: bool = False) -> list[str]
         for name in added:
             logger.info("已创建 %s" % name)
 
-    # Initialize git for memory version control
-    try:
-        from nanobot.utils.gitstore import GitStore
-        gs = GitStore(workspace, tracked_files=[
-            "SOUL.md", "USER.md", "memory/MEMORY.md",
-        ])
-        gs.init()
-    except Exception:
-        logger.warning("初始化 git 存储失败：%s" % workspace)
-
     return added
