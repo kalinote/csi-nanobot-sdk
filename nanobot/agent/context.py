@@ -35,6 +35,10 @@ class ContextBuilder:
         """Build the system prompt from identity, bootstrap files, memory, and skills."""
         parts = [self._get_identity(channel=channel)]
 
+        format_hint = self._get_channel_format_hint(channel)
+        if format_hint:
+            parts.append(format_hint)
+
         bootstrap = self._load_bootstrap_files()
         if bootstrap:
             parts.append(bootstrap)
@@ -61,6 +65,25 @@ class ContextBuilder:
             ))
 
         return "\n\n---\n\n".join(parts)
+
+    @staticmethod
+    def _get_channel_format_hint(channel: str | None) -> str:
+        """Inject lightweight formatting guidance for specific channels."""
+        if channel == "telegram":
+            return "\n".join([
+                "## 格式提示",
+                "",
+                "- 当前渠道为**即时通讯**（Telegram）。",
+                "- 回复尽量短、分段清晰，避免过长大段文字；必要时用要点列表。",
+            ])
+        if channel == "whatsapp":
+            return "\n".join([
+                "## 格式提示",
+                "",
+                "- 当前渠道偏好**纯文本**（WhatsApp）。",
+                "- 避免复杂排版与过多分隔线；优先使用简短段落与列表。",
+            ])
+        return ""
 
     def _get_identity(self, channel: str | None = None) -> str:
         """Get the core identity section."""

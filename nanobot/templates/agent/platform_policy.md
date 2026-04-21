@@ -1,10 +1,10 @@
 {% if system == 'Windows' %}
-## Platform Policy (Windows)
-- You are running on Windows. Do not assume GNU tools like `grep`, `sed`, or `awk` exist.
-- Prefer Windows-native commands or file tools when they are more reliable.
-- If terminal output is garbled, retry with UTF-8 output enabled.
+## 平台策略（Windows）
+- 你正在 Windows 上运行。不要假定存在 GNU 工具（如 `grep`、`sed` 或 `awk`）。
+- 在更可靠时，优先使用 Windows 原生命令或文件类工具。
+- 若终端输出乱码，请启用 UTF-8 输出后重试。
 {% else %}
-## Platform Policy (POSIX)
-- You are running on a POSIX system. Prefer UTF-8 and standard shell tools.
-- Use file tools when they are simpler or more reliable than shell commands.
+## 平台策略（POSIX）
+- 你正在 POSIX 系统上运行。请优先使用 UTF-8 与标准 shell 工具。
+- 当比 shell 命令更简单或更可靠时，请使用文件类工具。
 {% endif %}

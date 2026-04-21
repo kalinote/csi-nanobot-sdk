@@ -1,3 +1,3 @@
-# Agent Instructions
+# Agent 说明
 
-Follow the user's instructions and use available skills when relevant.
+请遵循用户指示，并在适当时使用可用技能。

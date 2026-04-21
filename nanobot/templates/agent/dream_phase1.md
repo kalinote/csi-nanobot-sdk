@@ -1,34 +1,36 @@
-You have TWO equally important tasks:
-1. Extract new facts from conversation history
-2. Deduplicate existing memory files — find and flag redundant, overlapping, or stale content even if NOT mentioned in history
+你有两项同等重要的任务：
+1. 从对话历史中提取新事实
+2. 对现有记忆文件去重——找出并标记冗余、重叠或过时内容，即便对话历史中未曾提及
 
-Output one line per finding:
-[FILE] atomic fact (not already in memory)
-[FILE-REMOVE] reason for removal
-[SKILL] kebab-case-name: one-line description of the reusable pattern
+Deduplicate existing memory files
 
-Files: USER (identity, preferences), SOUL (bot behavior, tone), MEMORY (knowledge, project context)
+每条发现占一行输出：
+[FILE] 原子事实（尚未写入记忆）
+[FILE-REMOVE] 删除原因
+[SKILL] kebab-case-name：可复用模式的一句话描述
 
-Rules:
-- Atomic facts: "has a cat named Luna" not "discussed pet care"
-- Corrections: [USER] location is Tokyo, not Osaka
-- Capture confirmed approaches the user validated
+文件：USER（身份、偏好），SOUL（机器人行为、语气），MEMORY（知识、项目背景）
 
-Deduplication — scan ALL memory files for these redundancy patterns:
-- Same fact stated in multiple places (e.g., "communicates in Chinese" in both USER.md and multiple MEMORY.md entries)
-- Overlapping or nested sections covering the same topic
-- Information in MEMORY.md that is already captured in USER.md or SOUL.md (MEMORY.md should not duplicate permanent-file content)
-- Verbose entries that can be condensed without losing information
-For each duplicate found, output [FILE-REMOVE] for the less authoritative copy (prefer keeping facts in their canonical location)
+Rules：
+- 原子事实：例如 "has a cat named Luna"，而非 "discussed pet care"
+- 更正： [USER] 地点是东京，不是大阪
+- 记录用户已确认的做法
 
-When judging outdated content, rely on meaning (passed events, resolved tracking, superseded approaches), not on any line metadata.
+去重——扫描全部记忆文件，查找以下冗余模式：
+- 同一事实在多处陈述（例如 "communicates in Chinese" 既出现在 USER.md 又出现在多条 MEMORY.md 条目中）
+- 覆盖同一主题的重叠或嵌套章节
+- MEMORY.md 中已有信息若在 USER.md 或 SOUL.md 中已记录，则属重复（MEMORY.md 不应重复永久文件中的内容）
+- 可在不丢失信息前提下压缩的冗长条目
+每发现一处重复，对权威性较低的那份输出 [FILE-REMOVE]（优先将事实保留在其规范位置）
 
-Skill discovery — flag [SKILL] when ALL of these are true:
-- A specific, repeatable workflow appeared 2+ times in the conversation history
-- It involves clear steps (not vague preferences like "likes concise answers")
-- It is substantial enough to warrant its own instruction set (not trivial like "read a file")
-- Do not worry about duplicates — the next phase will check against existing skills
+判断内容是否过时，应依据含义（已过去的事件、已结束的跟踪、已被替代的做法），而非任何行级元数据。
 
-Do not add: current weather, transient status, temporary errors, conversational filler.
+技能发现——当且仅当以下条件全部成立时，标出 [SKILL]：
+- 对话历史中出现 2 次或以上某一具体、可重复的工作流
+- 涉及明确步骤（而非「喜欢简洁回答」这类模糊偏好）
+- 足够重要，值得单独成文（而非「read a file」这类琐碎操作）
+- 不必纠结是否与已有技能重复——下一阶段会对照现有技能检查
 
-[SKIP] if nothing needs updating.
+勿添加：当前天气、瞬时状态、临时错误、对话填充语。
+
+若无需更新则 [SKIP]。

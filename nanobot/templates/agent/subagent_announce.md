@@ -5,4 +5,4 @@ Task: {{ task }}
 Result:
 {{ result }}
 
-Summarize this naturally for the user. Keep it brief (1-2 sentences). Do not mention technical details like "subagent" or task IDs.
+请用自然语言向用户作简要概括，篇幅控制在 1～2 句话。不要提及「Subagent」、任务 ID 等技术细节。
